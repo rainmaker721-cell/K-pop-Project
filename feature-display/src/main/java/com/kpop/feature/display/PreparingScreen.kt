@@ -23,7 +23,7 @@ fun PreparingScreen(modifier: Modifier = Modifier) {
     ) {
         CircularProgressIndicator(color = Color(0xFFE759FF))
         Text(
-            text = "디스플레이 준비중",
+            text = "4K 디스플레이 준비중",
             color = Color.White,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Medium,

@@ -71,7 +71,7 @@ fun ScanHomeScreen(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "실물 포토카드를 스캔하면 대형 패드에 자동으로 전체화면 전시됩니다.",
+                text = "실물 포토카드를 스캔하면 4K급으로 변환해 대형 패드에 자동 전시합니다.",
                 color = Color(0xFFBDB7C9),
                 style = MaterialTheme.typography.bodyMedium,
             )

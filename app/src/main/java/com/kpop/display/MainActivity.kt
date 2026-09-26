@@ -22,7 +22,7 @@ import com.kpop.feature.display.DisplayScreen
 import com.kpop.feature.display.PreparingScreen
 import com.kpop.feature.display.ScanHomeScreen
 import com.kpop.feature.scan.LocalImageCatalog
-import com.kpop.feature.upscale.LocalPassThroughProcessor
+import com.kpop.feature.upscale.Android4KUpscaleProcessor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 
@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
 private fun KPopApp() {
     val context = LocalContext.current
     val catalog = remember(context) { LocalImageCatalog(context) }
-    val processor = remember { LocalPassThroughProcessor() }
+    val processor = remember(context) { Android4KUpscaleProcessor(context) }
     val settings = remember { DisplaySettings() }
 
     val sampleItems = remember {
@@ -73,6 +73,8 @@ private fun KPopApp() {
     var screen by rememberSaveable { mutableStateOf(Screen.GALLERY.name) }
     var pendingItemId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    var preparedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    var preparedSourceUri by rememberSaveable { mutableStateOf<String?>(null) }
     var slideshowEnabled by rememberSaveable { mutableStateOf(false) }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -84,6 +86,8 @@ private fun KPopApp() {
         errorMessage = null
         updatedItems.lastOrNull()?.let { scanned ->
             pendingItemId = scanned.id
+            preparedItemId = null
+            preparedSourceUri = null
             slideshowEnabled = false
             screen = Screen.PREPARING.name
         }
@@ -92,6 +96,8 @@ private fun KPopApp() {
     fun prepare(item: GalleryItem, slideshow: Boolean) {
         errorMessage = null
         pendingItemId = item.id
+        preparedItemId = null
+        preparedSourceUri = null
         slideshowEnabled = slideshow
         screen = Screen.PREPARING.name
     }
@@ -110,6 +116,8 @@ private fun KPopApp() {
         processor.process(item)
             .onSuccess { processed ->
                 selectedItemId = processed.item.id
+                preparedItemId = processed.item.id
+                preparedSourceUri = (processed.item.source as? ImageSource.LocalUri)?.value
                 screen = Screen.DISPLAY.name
             }
             .onFailure {
@@ -127,7 +135,10 @@ private fun KPopApp() {
             delay(settings.slideIntervalMillis)
             val currentIndex = allItems.indexOfFirst { it.id == selectedItemId }
             val nextIndex = if (currentIndex < 0) 0 else (currentIndex + 1) % allItems.size
-            selectedItemId = allItems[nextIndex].id
+            pendingItemId = allItems[nextIndex].id
+            preparedItemId = null
+            preparedSourceUri = null
+            screen = Screen.PREPARING.name
         }
     }
 
@@ -136,16 +147,19 @@ private fun KPopApp() {
 
         Screen.DISPLAY.name -> {
             val selected = allItems.firstOrNull { it.id == selectedItemId }
-            if (selected == null) {
+            val preparedUri = preparedSourceUri
+            if (selected == null || preparedItemId != selected.id || preparedUri == null) {
                 LaunchedEffect(Unit) { screen = Screen.GALLERY.name }
             } else {
                 DisplayScreen(
-                    item = selected,
+                    item = selected.copy(source = ImageSource.LocalUri(preparedUri)),
                     maximumZoom = settings.maximumZoom,
                     onBackToGallery = {
                         slideshowEnabled = false
                         pendingItemId = null
                         selectedItemId = null
+                        preparedItemId = null
+                        preparedSourceUri = null
                         screen = Screen.GALLERY.name
                     },
                 )
